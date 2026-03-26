@@ -1,0 +1,106 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero-1",
+      "description": "A female doctor in a modern office, smiling while using a tablet.",
+      "imageUrl": "https://images.unsplash.com/photo-1729949127879-2d6556e2aee8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxkb2N0b3IlMjB0YWJsZXR8ZW58MHx8fHwxNzcxMjg0NTc0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "doctor tablet"
+    },
+    {
+      "id": "testimonial-1",
+      "description": "Avatar for Dr. Juan Pérez, a friendly-looking middle-aged man with glasses.",
+      "imageUrl": "https://images.unsplash.com/photo-1642541724244-83d49288a86b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxkb2N0b3IlMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzEyNzEzOTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "doctor portrait"
+    },
+    {
+      "id": "testimonial-2",
+      "description": "Avatar for Lic. María Gómez, a woman in her 30s with a warm smile.",
+      "imageUrl": "https://images.unsplash.com/photo-1705169697853-b91866b3618e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx0aGVyYXBpc3QlMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzEyNzEzOTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "therapist portrait"
+    },
+    {
+      "id": "testimonial-3",
+      "description": "Avatar for Dra. Carla Rodríguez, a professional-looking woman in a lab coat.",
+      "imageUrl": "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxkb2N0b3IlMjBwcm9mZXNzaW9uYWx8ZW58MHx8fHwxNzcxMjg0NTc0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "doctor professional"
+    },
+    {
+      "id": "patient-1",
+      "description": "Portrait of a male patient.",
+      "imageUrl": "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzEyNjI5ODh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "patient-2",
+      "description": "Portrait of a female patient.",
+      "imageUrl": "https://images.unsplash.com/photo-1592621385612-4d7129426394?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8fDE3NzEyMjA0NTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "patient-3",
+      "description": "Portrait of another female patient.",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzEyNTE1MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "patient-4",
+      "description": "Portrait of a senior male patient.",
+      "imageUrl": "https://images.unsplash.com/photo-1655628591001-ae40b826ae24?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxzZW5pb3IlMjBtYW58ZW58MHx8fHwxNzcxMjg0NTczfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "senior man"
+    },
+    {
+      "id": "patient-5",
+      "description": "Portrait of a young woman.",
+      "imageUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8fDE3NzEyMjA0NTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "patient-6",
+      "description": "Portrait of a man.",
+      "imageUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzEyNjI5ODh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "prof-1",
+      "description": "Portrait of a friendly male doctor.",
+      "imageUrl": "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxkb2N0b3IlMjBwcm9mZXNzaW9uYWx8ZW58MHx8fHwxNzcxMjg0NTc0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "doctor professional"
+    },
+    {
+      "id": "prof-2",
+      "description": "Portrait of a female psychologist.",
+      "imageUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxweXNjaG9sb2dpc3R8ZW58MHx8fHwxNzMyNjA3NDUxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "psychologist professional"
+    },
+    {
+      "id": "prof-3",
+      "description": "Portrait of a female dermatologist.",
+      "imageUrl": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkZXJtYXRvbG9naXN0fGVufDB8fHx8MTczMjYwNzQ5M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dermatologist professional"
+    },
+    {
+      "id": "prof-4",
+      "description": "Portrait of a male kinesiologist.",
+      "imageUrl": "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxraW5lc2lvbG9naXN0fGVufDB8fHx8MTczMjYwNzUzMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "kinesiologist professional"
+    },
+    {
+      "id": "prof-5",
+      "description": "Portrait of a male dentist.",
+      "imageUrl": "https://images.unsplash.com/photo-1619553259972-22416b73b508?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkZW50aXN0fGVufDB8fHx8MTczMjYwNzU2OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dentist professional"
+    },
+    {
+      "id": "prof-6",
+      "description": "Portrait of a female nutritionist.",
+      "imageUrl": "https://images.unsplash.com/photo-1542868297-b6f27237038c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxudXRyaXRpb25pc3R8ZW58MHx8fHwxNzMyNjA3NjAyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "nutritionist professional"
+    },
+    {
+      "id": "secretary-1",
+      "description": "Portrait of a female secretary or assistant.",
+      "imageUrl": "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzZWNyZXRhcnklMjBwb3J0cmFpdHxlbnwwfHx8fDE3MzI2MTI4MjV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "secretary portrait"
+    }
+  ]
+}

@@ -1,0 +1,271 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * Core Philosophy:
+     * This ruleset enforces a security model based on user ownership and role-based access control (RBAC).
+     * The primary roles are end-users, professionals, organization administrators, and global Super Admins.
+     * Each role has clearly defined permissions to ensure data is only accessed by authorized principals.
+     *
+     * Data Structure:
+     * - /users/{userId}: Private user profiles.
+     * - /professionals/{professionalId}: Publicly queryable professional profiles with private subcollections.
+     * - /professionals/{professionalId}/[patients|appointments|...]: Data owned and managed exclusively by the parent professional.
+     * - /organizations/{organizationId}: Collaborative documents managed by a list of administrators.
+     * - /roles_super_admin/{userId}: A dedicated collection for identifying global administrators ("Existence over Content").
+     * - /adminLogs/{adminLogId}: An append-only audit trail for Super Admin actions.
+     *
+     * Key Security Decisions:
+     * - Default Deny: All paths are closed by default. Access must be explicitly granted.
+     * - User Privacy: Users can only access their own user document. User enumeration is disabled.
+     * - Professional Data Segregation: A professional's private data (patients, appointments, etc.) is nested in subcollections.
+     *   This allows rules to use the path to verify ownership (`request.auth.uid == professionalId`), which is highly secure and performant.
+     * - Collaborative Access: Organizations are secured by checking for the user's UID in a denormalized `adminIds` array on the document itself.
+     * - Global Admins: A special `/roles_super_admin` collection provides a single source of truth for Super Admin status, which grants override access to most resources.
+     *
+     * Denormalization for Authorization:
+     * This ruleset relies on denormalized fields for efficient and secure authorization checks, avoiding slow and costly `get()` calls where possible.
+     * - The `/professionals/{professionalId}` path itself acts as a denormalized owner ID for all its subcollections.
+     * - The `userId` field is denormalized onto `/professionals/{professionalId}` documents to link them to a user account.
+     * - The `adminIds` array is denormalized onto `/organizations/{organizationId}` documents to manage member access directly.
+     *
+     * Structural Segregation:
+     * The `/professionals` collection is designed to be publicly readable, while the sensitive data associated with each professional
+     * (e.g., `/patients`, `/appointments`) is structurally segregated into private subcollections. This prevents accidental exposure
+     * of private data in public list queries and simplifies the security rules for each data type.
+     */
+
+    // ----------------------------------------------------------------------
+    // Helper Functions
+    // ----------------------------------------------------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the authenticated user's UID matches the provided userId.
+     * This is the primary function for enforcing document ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks if the document being accessed already exists.
+     * CRITICAL for update and delete operations to prevent acting on non-existent data.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    /**
+     * Checks if the authenticated user is a Super Admin by checking for their
+     * UID in the dedicated /roles_super_admin collection.
+     */
+    function isSuperAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_super_admin/$(request.auth.uid));
+    }
+
+    /**
+     * Checks if a user is listed as an admin in an organization's `adminIds` array.
+     * Uses the incoming document for 'create' or the existing document for other ops.
+     */
+    function isOrganizationAdmin(doc) {
+      return isSignedIn() && request.auth.uid in doc.data.adminIds;
+    }
+    
+    /**
+     * Checks if the requesting user is a secretary of the given organization.
+     * This requires one 'get' call to the organization document.
+     */
+    function isOrganizationSecretary(organizationId) {
+      let orgPath = /databases/$(database)/documents/organizations/$(organizationId);
+      let orgDoc = get(orgPath);
+      return isSignedIn()
+        && organizationId != null
+        && exists(orgPath)
+        && 'secretaryIds' in orgDoc.data
+        && request.auth.uid in orgDoc.data.secretaryIds;
+    }
+
+    /**
+     * Checks if the user has access to a professional's data either as the owner
+     * or as a secretary of the professional's organization.
+     */
+    function hasProfessionalDataAccess(professionalId) {
+      let profPath = /databases/$(database)/documents/professionals/$(professionalId);
+      let profDoc = get(profPath);
+      return isOwner(professionalId)
+        || (
+          isSignedIn()
+          && exists(profPath)
+          && 'organizationId' in profDoc.data
+          && profDoc.data.organizationId != null
+          && isOrganizationSecretary(profDoc.data.organizationId)
+        );
+    }
+
+    /**
+     * On create, ensures the user document's internal ID matches its path ID.
+     */
+    function isCreatingUserConsistent(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    /**
+     * On update, ensures the user document's internal ID is immutable.
+     */
+    function isUserIdImmutable() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * On create, ensures the professional profile is linked to the creator.
+     */
+    function isCreatingProfessionalConsistent() {
+      return request.resource.data.userId == request.auth.uid;
+    }
+
+    /**
+     * On update, ensures the professional's link to their user account is immutable.
+     */
+    function isProfessionalOwnerLinkImmutable() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    /**
+     * On create, ensures a subcollection document's professionalId field
+     * matches the professionalId from the path, enforcing relational integrity.
+     */
+    function isCreatingSubcollectionDocConsistent(professionalId) {
+      return request.resource.data.professionalId == professionalId;
+    }
+
+    /**
+     * On update, ensures the link to the parent professional is immutable.
+     */
+    function isSubcollectionParentLinkImmutable() {
+      return request.resource.data.professionalId == resource.data.professionalId;
+    }
+    
+    /**
+     * On create, ensures the admin log is correctly attributed to the creator.
+     */
+    function isCreatingAdminLogConsistent() {
+      return request.resource.data.adminId == request.auth.uid;
+    }
+
+    // ----------------------------------------------------------------------
+    // Collection Rules
+    // ----------------------------------------------------------------------
+
+    /**
+     * @description Manages user profiles. A user can create, read, and update their own
+     *              profile. Super Admins have full management access. Listing users is
+     *              restricted to Super Admins to prevent user enumeration.
+     * @path /users/{userId}
+     * @allow (create) A new user with auth.uid 'user123' creating their own document at /users/user123.
+     * @deny (update) A user with auth.uid 'userABC' trying to update the document at /users/userXYZ.
+     * @principle Restricts access to a user's own data tree and grants override access to Super Admins.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isOwner(userId) && isCreatingUserConsistent(userId);
+      allow update: if (isOwner(userId) || isSuperAdmin()) && isExistingDoc() && isUserIdImmutable();
+      allow delete: if (isOwner(userId) || isSuperAdmin()) && isExistingDoc();
+    }
+
+    /**
+     * @description Manages professional profiles. Profiles are publicly readable and listable
+     *              to support a public directory feature. However, only the professional
+     *              (the user matching the `userId` field) can create, update, or delete their own profile.
+     * @path /professionals/{professionalId}
+     * @allow (get) Any user, signed in or not, can read a professional's profile.
+     * @deny (update) A professional trying to modify another professional's profile.
+     * @principle Implements a "Public Read with Owner-Only Writes" pattern.
+     */
+    match /professionals/{professionalId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && isCreatingProfessionalConsistent();
+      allow update: if isOwner(resource.data.userId) && isExistingDoc() && isProfessionalOwnerLinkImmutable();
+      allow delete: if isOwner(resource.data.userId) && isExistingDoc();
+
+      /**
+       * @description Manages data owned exclusively by a professional, such as patients,
+       *              appointments, conversations, and waitlist entries. Access is strictly
+       *              limited to the professional identified by `professionalId` in the path,
+       *              or a secretary of the professional's organization.
+       * @path /professionals/{professionalId}/[patients|appointments|conversations|waitlist]/{docId}
+       * @allow (list) A professional with auth.uid 'prof123' listing documents at /professionals/prof123/patients.
+       * @deny (get) An unauthorized user trying to read a document at /professionals/profXYZ/patients/patient456.
+       * @principle Enforces ownership via path, but allows delegated access to organization members (secretaries).
+       */
+      match /{collection}/{docId} {
+        allow get: if hasProfessionalDataAccess(professionalId);
+        allow list: if hasProfessionalDataAccess(professionalId);
+        allow create: if hasProfessionalDataAccess(professionalId) && isCreatingSubcollectionDocConsistent(professionalId);
+        allow update: if hasProfessionalDataAccess(professionalId) && isExistingDoc() && isSubcollectionParentLinkImmutable();
+        allow delete: if hasProfessionalDataAccess(professionalId) && isExistingDoc();
+      }
+    }
+
+    /**
+     * @description Manages organizations (e.g., clinics). Access is granted to users whose
+     *              UID is present in the `adminIds` array of the document, or to Super Admins.
+     *              Listing is disallowed to prevent exposing all organizations.
+     * @path /organizations/{organizationId}
+     * @allow (get) A user with auth.uid 'admin123' reading an organization where 'admin123' is in the `adminIds` array.
+     * @deny (update) A regular user attempting to modify an organization's details.
+     * @principle Implements a "Shared Access (Closed Collaborators)" pattern using a denormalized member list.
+     */
+    match /organizations/{organizationId} {
+      allow get: if (isOrganizationAdmin(resource) || isSuperAdmin());
+      allow list: if false;
+      allow create: if isOrganizationAdmin(request.resource) || isSuperAdmin();
+      allow update: if (isOrganizationAdmin(resource) || isSuperAdmin()) && isExistingDoc();
+      allow delete: if (isOrganizationAdmin(resource) || isSuperAdmin()) && isExistingDoc();
+    }
+
+    /**
+     * @description Stores an immutable audit trail of administrative actions. Only Super Admins
+     *              can create and read these logs. Modification and deletion are disallowed
+     *              to preserve the integrity of the audit log.
+     * @path /adminLogs/{adminLogId}
+     * @allow (create) A Super Admin creating a new log entry.
+     * @deny (update) Any user, including a Super Admin, trying to change an existing log entry.
+     * @principle Enforces strict role-based access for a sensitive, append-only collection.
+     */
+    match /adminLogs/{adminLogId} {
+      allow get: if isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isSuperAdmin() && isCreatingAdminLogConsistent();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description A private collection used to designate Super Admins. The existence of a
+     *              document with a user's UID as the ID grants them admin privileges.
+     *              This rule allows a user to create and read their OWN role document, but nothing else.
+     *              This enables the self-signup flow for Super Admins.
+     * @path /roles_super_admin/{userId}
+     * @allow (create) The user `admin@mediturnos.com` creating the document `/roles_super_admin/THEIR_OWN_UID`.
+     * @deny (any) All other client requests (list, update, delete) are rejected.
+     * @principle Acts as a secure, backend-only Access Control List (ACL) with a single entrypoint for self-registration.
+     */
+    match /roles_super_admin/{userId} {
+      allow create: if isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

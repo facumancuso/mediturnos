@@ -1,0 +1,500 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the MediTurnos platform, including professionals, patients, and administrators. Assumes authentication is handled externally (e.g., Firebase Auth).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity (e.g., Firebase Auth UID)."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL to the user's profile picture.",
+          "format": "uri"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the application.",
+          "enum": ["professional", "patient", "secretary", "admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "displayName",
+        "role",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Professional": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Professional",
+      "type": "object",
+      "description": "Represents a healthcare professional registered on the platform, managing appointments and patients.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Professional entity. (Relationship: User 1:1 Professional)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the associated User entity. (Relationship: User 1:1 Professional)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the professional."
+        },
+        "specialty": {
+          "type": "string",
+          "description": "The medical specialty of the professional (e.g., 'Cardiología', 'Psicología')."
+        },
+        "licenseNumber": {
+          "type": "string",
+          "description": "The professional's medical license or registration number."
+        },
+        "whatsappNumber": {
+          "type": "string",
+          "description": "The WhatsApp phone number used for patient communication."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL to the professional's profile photo.",
+          "format": "uri"
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the professional's clinic or office."
+        },
+        "workingHours": {
+          "type": "string",
+          "description": "A JSON string representing the weekly working hours configuration for the professional. It includes start/end times and breaks for each day."
+        },
+        "appointmentDuration": {
+          "type": "number",
+          "description": "Default duration in minutes for a standard appointment."
+        },
+        "googleCalendarId": {
+          "type": "string",
+          "description": "The ID of the professional's Google Calendar for synchronization."
+        },
+        "googleCalendarTokens": {
+          "type": "string",
+          "description": "Encrypted access and refresh tokens for Google Calendar API. (Sensitive data, handle with care and ideally externalized/encrypted)."
+        },
+        "appleCalendarSync": {
+          "type": "boolean",
+          "description": "Indicates if synchronization with Apple Calendar is enabled."
+        },
+        "messages": {
+          "type": "string",
+          "description": "A JSON string containing customizable message templates (welcome, confirmation, reminder) for WhatsApp communication."
+        },
+        "subscription": {
+          "type": "string",
+          "description": "A JSON string containing details of the professional's subscription plan (plan, status, trialEndsAt, currentPeriodEnd, stripeCustomerId, stripeSubscriptionId)."
+        },
+        "publicProfile": {
+          "type": "object",
+          "description": "Details for the professional's public directory profile.",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "verified": { "type": "boolean" },
+            "slug": { "type": "string" },
+            "bio": { "type": "string" },
+            "insurances": { "type": "array", "items": { "type": "string" } },
+            "rating": { "type": "number" },
+            "reviewCount": { "type": "number" },
+            "mapUrl": { "type": "string", "format": "uri" }
+          }
+        },
+        "stats": {
+          "type": "string",
+          "description": "A JSON string containing aggregated statistics for the professional (totalAppointments, totalPatients, completionRate, noShowRate, profileViews)."
+        },
+        "organizationId": {
+          "type": "string",
+          "description": "Reference to the Organization entity if the professional belongs to one. (Relationship: Organization 1:N Professional)"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates if the professional's account is currently active."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the professional's profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the professional's profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "specialty",
+        "whatsappNumber",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Patient": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Patient",
+      "type": "object",
+      "description": "Represents a patient managed by a specific healthcare professional.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The patient's National Identification Document (DNI) number. Used as the unique identifier for the patient within a professional's records."
+        },
+        "professionalId": {
+          "type": "string",
+          "description": "Reference to the Professional who manages this patient. (Relationship: Professional 1:N Patient)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the patient."
+        },
+        "dni": {
+          "type": "string",
+          "description": "The patient's National Identification Document (DNI) number."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The patient's primary phone number."
+        },
+        "email": {
+          "type": "string",
+          "description": "The patient's email address.",
+          "format": "email"
+        },
+        "insurance": {
+          "type": "string",
+          "description": "The patient's health insurance provider."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Private notes from the professional about the patient."
+        },
+        "lastVisit": {
+          "type": "string",
+          "description": "Timestamp of the patient's last appointment.",
+          "format": "date-time"
+        },
+        "totalVisits": {
+          "type": "number",
+          "description": "Total number of completed appointments the patient has had with the professional."
+        },
+        "missedAppointments": {
+          "type": "number",
+          "description": "Count of appointments the patient failed to show up for."
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "URL to the patient's profile picture.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the patient record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the patient record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "professionalId",
+        "name",
+        "dni",
+        "phone",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Appointment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Appointment",
+      "type": "object",
+      "description": "Represents a scheduled medical appointment between a professional and a patient.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Appointment entity."
+        },
+        "professionalId": {
+          "type": "string",
+          "description": "Reference to the Professional conducting the appointment. (Relationship: Professional 1:N Appointment)"
+        },
+        "patientId": {
+          "type": "string",
+          "description": "Reference to the Patient attending the appointment. (Relationship: Patient 1:N Appointment)"
+        },
+        "date": {
+          "type": "string",
+          "description": "The date and time of the appointment.",
+          "format": "date-time"
+        },
+        "time": {
+          "type": "string",
+          "description": "The time of the appointment in HH:mm format."
+        },
+        "patientName": {
+          "type": "string",
+          "description": "Denormalized patient name for easier display."
+        },
+        "patientAvatarUrl": {
+          "type": "string",
+          "description": "Denormalized patient avatar URL for easier display."
+        },
+        "duration": {
+          "type": "number",
+          "description": "The duration of the appointment in minutes."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of consultation.",
+          "enum": ["first_time", "checkup", "urgent"]
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the appointment (e.g., pending, confirmed, completed).",
+          "enum": ["confirmed", "pending", "completed", "cancelled", "no_show"]
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes related to the appointment."
+        },
+        "revenue": {
+            "type": "number",
+            "description": "Revenue generated from the appointment."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the appointment was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the appointment was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "professionalId",
+        "patientId",
+        "date",
+        "duration",
+        "type",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Organization": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Organization",
+      "type": "object",
+      "description": "Represents a clinic or medical organization that can manage multiple professionals and potentially have its own subscription.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Organization entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The official name of the organization."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the organization (e.g., 'Clinic', 'Hospital', 'Private Practice Group')."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the organization."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The main phone number of the organization."
+        },
+        "email": {
+          "type": "string",
+          "description": "The main email address of the organization.",
+          "format": "email"
+        },
+        "adminIds": {
+          "type": "array",
+          "description": "An array of User IDs who have administrative privileges over this organization. (Relationship: User N:N Organization)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "professionalIds": {
+          "type": "array",
+          "description": "An array of Professional IDs affiliated with this organization. (Relationship: Professional N:N Organization)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "secretaryIds": {
+          "type": "array",
+          "description": "An array of User IDs who have secretary privileges over this organization.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subscription": {
+          "type": "string",
+          "description": "A JSON string containing details of the organization's subscription plan (plan, status, trialEndsAt, currentPeriodEnd, stripeCustomerId, stripeSubscriptionId)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the organization record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the organization record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "address",
+        "phone",
+        "email",
+        "subscription",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AdminLog",
+      "type": "object",
+      "description": "Records administrative actions performed on the platform for auditing purposes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AdminLog entry."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to the User (admin) who performed the action. (Relationship: User 1:N AdminLog)"
+        },
+        "action": {
+          "type": "string",
+          "description": "Description of the action performed (e.g., 'Approved Professional Profile', 'Changed Subscription Plan')."
+        },
+        "targetType": {
+          "type": "string",
+          "description": "The type of entity affected by the action (e.g., 'Professional', 'Organization')."
+        },
+        "targetId": {
+          "type": "string",
+          "description": "The ID of the specific entity instance affected by the action."
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional JSON string details about the action, such as old and new values, or specific parameters."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the administrative action was recorded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "adminId",
+        "action",
+        "targetType",
+        "targetId",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous",
+      "phone"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles, including authentication details (UID from Firebase Auth), basic information, and their role within the platform. Access: Owners can read/update their own profile. Super Admins can manage all user profiles. Includes the 'role' field for DBAC."
+    },
+    "/professionals/{professionalId}": {
+      "schema": {
+        "$ref": "#/entities/Professional"
+      },
+      "description": "Stores detailed profiles for healthcare professionals. The 'professionalId' is typically the same as the user's Firebase Auth UID ('userId' field). Access: Owners (matching 'userId') can read/update their profile. Public profiles (where 'publicProfile.enabled' is true) can be listed and read by anyone. Includes denormalized 'userId' for authorization independence."
+    },
+    "/professionals/{professionalId}/patients/{patientId}": {
+      "schema": {
+        "$ref": "#/entities/Patient"
+      },
+      "description": "Stores patient records, nested under the managing professional's profile. The document ID is the patient's DNI. Access: Only the owning professional (matching 'professionalId' in the path) can manage their patients."
+    },
+    "/professionals/{professionalId}/appointments/{appointmentId}": {
+      "schema": {
+        "$ref": "#/entities/Appointment"
+      },
+      "description": "Stores scheduled appointments, nested under the professional who conducts them. Access: Only the owning professional (matching 'professionalId' in the path) can read, create, update, or delete their appointments. This structure ensures Authorization Independence and QAPs for appointment data. Includes denormalized 'patientId' for data clarity."
+    },
+    "/organizations/{organizationId}": {
+      "schema": {
+        "$ref": "#/entities/Organization"
+      },
+      "description": "Stores information about clinics or medical organizations. Access: Managed by users listed in the 'adminIds' array within the document, or by Super Admins. This structure uses denormalized 'adminIds' array for Authorization Independence and collaborative access."
+    },
+    "/adminLogs/{adminLogId}": {
+      "schema": {
+        "$ref": "#/entities/AdminLog"
+      },
+      "description": "Records administrative actions performed on the platform for auditing. Access: Only accessible by users with the 'admin' role, typically checked against the '/roles_super_admin' collection. Includes denormalized 'adminId' for auditing clarity."
+    },
+    "/roles_super_admin/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "A dedicated collection for global Super Admin role assignment. Access: Read-only access by the application to check for Super Admin status using 'Existence over Content'. A document's presence here indicates the 'userId' is a Super Admin. This enables clear DBAC and QAPs for global admin authorization."
+    }
+  }
+}
