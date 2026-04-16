@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { useUser } from '@/firebase';
 import type { Professional } from '@/types';
 import { fetchWithAuth } from '@/lib/fetch-with-auth';
+import { PROFESSIONAL_BRAND_COVER_URL } from '@/lib/branding';
 
 type ProfileFormState = {
   name: string;
@@ -43,7 +44,7 @@ const fallbackForm: ProfileFormState = {
   address: 'No especificada',
   whatsappNumber: '',
   photoURL: 'https://picsum.photos/seed/prof-avatar-fallback/100/100',
-  coverImageUrl: 'https://picsum.photos/seed/prof-banner-fallback/600/200',
+  coverImageUrl: PROFESSIONAL_BRAND_COVER_URL,
   publicProfile: {
     enabled: true,
     slug: 'profesional',
@@ -92,9 +93,7 @@ export default function PublicProfilePage() {
     async function loadProfessional() {
       try {
         setIsLoading(true);
-        const response = await fetchWithAuth(`/api/dashboard/professional?professionalId=${uid}`, {
-          cache: 'no-store',
-        });
+        const response = await fetchWithAuth(`/api/dashboard/professional?professionalId=${uid}`);
 
         if (!response.ok) {
           throw new Error('No se pudo cargar el perfil profesional.');
@@ -112,7 +111,7 @@ export default function PublicProfilePage() {
             address: data.address || fallbackForm.address,
             whatsappNumber: data.whatsappNumber || '',
             photoURL: data.photoURL || fallbackForm.photoURL,
-            coverImageUrl: data.coverImageUrl || fallbackForm.coverImageUrl,
+            coverImageUrl: PROFESSIONAL_BRAND_COVER_URL,
             publicProfile: {
               enabled: profile.enabled ?? true,
               slug: profile.slug || slugify(data.name || fallbackForm.name),
@@ -169,7 +168,6 @@ export default function PublicProfilePage() {
           address: form.address,
           whatsappNumber: form.whatsappNumber,
           photoURL: form.photoURL,
-          coverImageUrl: form.coverImageUrl,
           publicProfile: {
             enabled: form.publicProfile.enabled,
             slug: form.publicProfile.slug || slugify(form.name),
@@ -199,7 +197,7 @@ export default function PublicProfilePage() {
         address: updated.address || current.address,
         whatsappNumber: updated.whatsappNumber || current.whatsappNumber,
         photoURL: updated.photoURL || current.photoURL,
-        coverImageUrl: updated.coverImageUrl || current.coverImageUrl,
+        coverImageUrl: PROFESSIONAL_BRAND_COVER_URL,
         publicProfile: {
           ...current.publicProfile,
           enabled: updatedProfile.enabled ?? current.publicProfile.enabled,
@@ -234,12 +232,6 @@ export default function PublicProfilePage() {
     if (!file) return;
     const dataUrl = await fileToDataUrl(file);
     setForm((current) => ({ ...current, photoURL: dataUrl }));
-  }
-
-  async function handleCoverChange(file?: File) {
-    if (!file) return;
-    const dataUrl = await fileToDataUrl(file);
-    setForm((current) => ({ ...current, coverImageUrl: dataUrl }));
   }
 
   const profileUrl = `/profesional/${form.publicProfile.slug || slugify(form.name)}`;
@@ -419,19 +411,11 @@ export default function PublicProfilePage() {
             </CardHeader>
             <CardContent>
               <Card className="overflow-hidden">
-                <div className="relative h-32 bg-primary/20 group">
+                <div className="relative h-32 bg-primary/20">
                   <Image src={form.coverImageUrl} alt="Portada" fill className="object-cover" />
-                  <label htmlFor="cover-photo-upload" className="absolute inset-0 bg-black/50 items-center justify-center cursor-pointer hidden group-hover:flex">
-                    <Camera className="h-6 w-6 text-white" />
-                    <span className="ml-2 text-white font-medium">Cambiar portada</span>
-                  </label>
-                  <input
-                    id="cover-photo-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(event) => void handleCoverChange(event.target.files?.[0])}
-                  />
+                </div>
+                <div className="px-4 pt-2">
+                  <p className="text-xs text-muted-foreground">Portada institucional de MediTurnos (no editable).</p>
                 </div>
 
                 <div className="p-4 relative">

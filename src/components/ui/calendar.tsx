@@ -20,44 +20,46 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
+        root: "w-full",
+        months: "flex flex-col gap-4",
+        month: "space-y-3",
+        month_caption: "relative flex items-center justify-center pt-1",
+        caption_label: "text-sm font-semibold capitalize",
+        nav: "flex items-center justify-between gap-2",
+        button_previous: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+          "h-8 w-8 border-border bg-card p-0 text-foreground opacity-100 shadow-sm hover:bg-muted"
         ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: cn(
+        button_next: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-8 w-8 border-border bg-card p-0 text-foreground opacity-100 shadow-sm hover:bg-muted"
+        ),
+        weekdays: "grid grid-cols-7 gap-1",
+        weekday:
+          "text-muted-foreground flex h-9 items-center justify-center rounded-md text-[0.72rem] font-semibold uppercase tracking-wide",
+        weeks: "mt-1 space-y-1",
+        week: "grid grid-cols-7 gap-1",
+        day: "h-9 w-9 p-0",
+        day_button: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+          "h-9 w-9 rounded-md p-0 font-medium aria-selected:opacity-100"
         ),
-        day_range_end: "day-range-end",
-        day_selected:
+        selected:
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside: "text-muted-foreground opacity-50",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
+        today: "bg-accent text-accent-foreground",
+        outside: "text-muted-foreground opacity-40",
+        disabled: "text-muted-foreground opacity-40",
+        range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
+        hidden: "invisible",
         ...classNames,
       }}
       components={{
         Chevron: ({ orientation, className, ...props }) =>
           orientation === "left" ? (
-            <ChevronLeft className={cn("h-4 w-4", className)} />
+            <ChevronLeft className={cn("h-4 w-4 text-foreground", className)} />
           ) : (
-            <ChevronRight className={cn("h-4 w-4", className)} />
+            <ChevronRight className={cn("h-4 w-4 text-foreground", className)} />
           ),
       }}
       {...props}

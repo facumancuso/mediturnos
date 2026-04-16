@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       }
 
       return {
-        id: prof._id?.toString() || prof.id || '',
+        id: prof.id || prof.userId || prof._id?.toString() || '',
         name: prof.name || 'Sin nombre',
         email: prof.email || '',
         phone: prof.phone || prof.whatsappNumber || '',

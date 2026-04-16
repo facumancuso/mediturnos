@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "seed:mongodb": "node scripts/seed-mongodb.mjs"
+    "seed:mongodb": "node scripts/seed-mongodb.mjs",
+    "grant:superadmin": "node scripts/grant-super-admin.mjs",
+    "set:password": "node scripts/set-user-password.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^2.1.2",

@@ -80,6 +80,18 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       keyframes: {
+        'fade-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
+        'slide-up': {
+          from: { transform: 'translateY(6px)', opacity: '0' },
+          to: { transform: 'translateY(0)', opacity: '1' },
+        },
+        'scale-in': {
+          from: { transform: 'scale(0.96)', opacity: '0' },
+          to: { transform: 'scale(1)', opacity: '1' },
+        },
         'accordion-down': {
           from: {
             height: '0',
@@ -100,6 +112,9 @@ export default {
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'fade-in': 'fade-in 0.2s ease',
+        'slide-up': 'slide-up 0.25s ease',
+        'scale-in': 'scale-in 0.2s ease',
       },
     },
   },

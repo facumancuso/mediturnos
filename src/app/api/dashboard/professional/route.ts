@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getMongoDb } from '@/lib/mongodb';
 import { requireRequestAuth } from '@/lib/request-auth';
+import { isRequestSuperAdmin } from '@/lib/super-admin-request';
 import { logSecurityAudit } from '@/lib/security-audit';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { PROFESSIONAL_BRAND_COVER_URL } from '@/lib/branding';
 
 export const dynamic = 'force-dynamic';
 
-function isSuperAdminEmail(email?: string | null) {
-  const normalized = (email || '').toLowerCase();
-  const configured = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@mediturnos.com').toLowerCase();
-  return normalized !== '' && normalized === configured;
-}
+const PROFESSIONAL_CACHE_TTL_MS = 30_000;
+const professionalCache = new Map<string, { expiresAt: number; payload: Record<string, any> }>();
 
 function mapDocument(doc: Record<string, any>) {
   return {
     ...doc,
+    coverImageUrl: PROFESSIONAL_BRAND_COVER_URL,
     id: doc.id || doc._id?.toString(),
     _id: undefined,
   };
@@ -23,7 +23,8 @@ function mapDocument(doc: Record<string, any>) {
 export async function GET(request: Request) {
   try {
     const authUser = await requireRequestAuth(request);
-    if (isSuperAdminEmail(authUser.email)) {
+    const isSuperAdmin = await isRequestSuperAdmin(request, authUser.uid);
+    if (isSuperAdmin) {
       return NextResponse.json(
         { error: 'Super Admin no tiene acceso al perfil profesional.' },
         { status: 403 }
@@ -64,6 +65,17 @@ export async function GET(request: Request) {
     }
 
     const db = await getMongoDb();
+
+    const cached = professionalCache.get(professionalId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.payload, {
+        headers: {
+          'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+          'X-Data-Cache': 'hit',
+        },
+      });
+    }
+
     const professional = await db.collection('professionals').findOne({
       $or: [{ id: professionalId }, { userId: professionalId }],
     });
@@ -72,7 +84,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Profesional no encontrado.' }, { status: 404 });
     }
 
-    return NextResponse.json(mapDocument(professional));
+    const payload = mapDocument(professional);
+    professionalCache.set(professionalId, {
+      expiresAt: Date.now() + PROFESSIONAL_CACHE_TTL_MS,
+      payload,
+    });
+
+    return NextResponse.json(payload, {
+      headers: {
+        'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+        'X-Data-Cache': 'miss',
+      },
+    });
   } catch (error) {
     if (
       error instanceof Error &&
@@ -92,7 +115,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const authUser = await requireRequestAuth(request);
-    if (isSuperAdminEmail(authUser.email)) {
+    const isSuperAdmin = await isRequestSuperAdmin(request, authUser.uid);
+    if (isSuperAdmin) {
       return NextResponse.json(
         { error: 'Super Admin no puede crear perfil profesional.' },
         { status: 403 }
@@ -122,7 +146,6 @@ export async function POST(request: Request) {
       whatsappNumber,
       address,
       photoURL,
-      coverImageUrl,
       publicProfile,
     } = body || {};
 
@@ -158,7 +181,7 @@ export async function POST(request: Request) {
       whatsappNumber: whatsappNumber || '',
       address: address || 'No especificada',
       photoURL: photoURL || `https://picsum.photos/seed/${id}/100/100`,
-      coverImageUrl: coverImageUrl || `https://picsum.photos/seed/${id}-cover/600/200`,
+      coverImageUrl: PROFESSIONAL_BRAND_COVER_URL,
       appointmentDuration: 30,
       publicProfile: {
         enabled: true,
@@ -181,6 +204,8 @@ export async function POST(request: Request) {
       { upsert: true }
     );
 
+    professionalCache.delete(id);
+
     const saved = await db.collection('professionals').findOne({ id });
     return NextResponse.json(mapDocument(saved || professional), { status: 201 });
   } catch (error) {
@@ -199,7 +224,8 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const authUser = await requireRequestAuth(request);
-    if (isSuperAdminEmail(authUser.email)) {
+    const isSuperAdmin = await isRequestSuperAdmin(request, authUser.uid);
+    if (isSuperAdmin) {
       return NextResponse.json(
         { error: 'Super Admin no puede editar perfil profesional.' },
         { status: 403 }
@@ -225,11 +251,13 @@ export async function PATCH(request: Request) {
       name,
       dni,
       specialty,
+      appointmentDuration,
+      workingHours,
       whatsappNumber,
       address,
       photoURL,
-      coverImageUrl,
       publicProfile,
+      blockedDates,
     } = body || {};
 
     if (!professionalId) {
@@ -288,15 +316,28 @@ export async function PATCH(request: Request) {
           ...(name ? { name } : {}),
           ...(dni ? { dni } : {}),
           ...(specialty ? { specialty } : {}),
+          ...(typeof appointmentDuration === 'number' && Number.isFinite(appointmentDuration) && appointmentDuration > 0
+            ? { appointmentDuration }
+            : {}),
+          ...(typeof workingHours === 'string' ? { workingHours } : {}),
           ...(typeof whatsappNumber === 'string' ? { whatsappNumber } : {}),
           ...(typeof address === 'string' ? { address } : {}),
           ...(typeof photoURL === 'string' ? { photoURL } : {}),
-          ...(typeof coverImageUrl === 'string' ? { coverImageUrl } : {}),
+          coverImageUrl: PROFESSIONAL_BRAND_COVER_URL,
+          ...(Array.isArray(blockedDates)
+            ? {
+                blockedDates: blockedDates
+                  .filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
+                  .slice(0, 500),
+              }
+            : {}),
           publicProfile: mergedPublicProfile,
           updatedAt: now,
         },
       }
     );
+
+    professionalCache.delete(professionalId);
 
     const saved = await db.collection('professionals').findOne({ _id: current._id });
     return NextResponse.json(mapDocument(saved || current));

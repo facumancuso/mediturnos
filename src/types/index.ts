@@ -27,10 +27,19 @@ export type Appointment = {
   duration: number; // in minutes
   type: 'first_time' | 'checkup' | 'urgent';
   status: 'confirmed' | 'pending' | 'completed' | 'cancelled' | 'no_show';
+  patientResponse?: 'confirmed' | 'declined';
+  patientRespondedAt?: string;
+  reminderSentAt?: string;
+  ratingRequestSentAt?: string;
+  ratingRequestTokenExpiresAt?: string;
+  ratingRequestUsedAt?: string;
+  reviewSubmittedAt?: string;
+  reviewId?: string;
   date: Timestamp;
   revenue?: number;
   hasSeña?: boolean;
   notes?: string;
+  cancelledAt?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
@@ -61,9 +70,15 @@ export type Professional = {
     rating: number;
     reviewCount: number;
     mapUrl?: string;
+    cardTheme?: {
+      primaryColor?: string;
+      accentColor?: string;
+      backgroundColor?: string;
+    };
   };
   stats: string; // JSON string
   organizationId?: string;
+  blockedDates?: string[];
   isActive: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -129,6 +144,8 @@ export type SuperAdminTeamMember = {
 
 export type Review = {
   id: string;
+  appointmentId?: string;
+  professionalId?: string;
   authorName: string;
   rating: number;
   comment: string;

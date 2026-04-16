@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
-import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from './ui/sheet';
 import { Menu } from 'lucide-react';
 
 export function LandingHeader() {
   const navLinks = [
-    { href: '#how-it-works', label: 'Cómo funciona' },
-    { href: '#features', label: 'Beneficios' },
-    { href: '#pricing', label: 'Precios' },
+    { href: '/#how-it-works', label: 'Cómo funciona' },
+    { href: '/#features', label: 'Beneficios' },
+    { href: '/#pricing', label: 'Precios' },
     { href: '/directorio', label: 'Directorio' },
     { href: '/estado-turno', label: 'Estado de turno' },
   ];
@@ -39,10 +39,11 @@ export function LandingHeader() {
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <Menu className="h-6 w-6" />
-                  <span className="sr-only">Toggle Menu</span>
+                  <span className="sr-only">Abrir menú</span>
                 </Button>
               </SheetTrigger>
               <SheetContent side="left">
+                <SheetTitle className="sr-only">Menú principal</SheetTitle>
                 <Link href="/" className="mb-8">
                   <Logo />
                 </Link>
@@ -63,7 +64,7 @@ export function LandingHeader() {
 
           <div className="flex items-center gap-2">
             <Button variant="ghost" asChild>
-              <Link href="/auth/login">Iniciar Sesión</Link>
+              <Link href="/auth/login">Iniciar sesión</Link>
             </Button>
             <Button asChild>
               <Link href="/auth/register">Registrarse</Link>

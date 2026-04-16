@@ -26,6 +26,7 @@ import { AddAppointmentDialog } from '@/components/add-appointment-dialog';
 import { PatientDetailsDialog } from '@/components/patient-details-dialog';
 import type { Patient } from '@/types';
 import { AddPatientDialog } from '@/components/add-patient-dialog';
+import { EditPatientDialog } from '@/components/edit-patient-dialog';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fetchWithAuth } from '@/lib/fetch-with-auth';
@@ -39,6 +40,8 @@ export default function PatientsPage() {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedPatientForDetails, setSelectedPatientForDetails] = useState<Patient | null>(null);
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
+  const [isEditPatientOpen, setIsEditPatientOpen] = useState(false);
+  const [selectedPatientForEdit, setSelectedPatientForEdit] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -111,6 +114,15 @@ export default function PatientsPage() {
     });
   };
 
+  const handlePatientUpdated = (updated: Patient) => {
+    setPatients((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  };
+
+  const openEditDialog = (patient: Patient) => {
+    setSelectedPatientForEdit(patient);
+    setIsEditPatientOpen(true);
+  };
+
   return (
     <>
       <AddAppointmentDialog
@@ -122,26 +134,35 @@ export default function PatientsPage() {
         patient={selectedPatientForDetails}
         open={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
+        onUpdated={handlePatientUpdated}
       />
-      <AddPatientDialog 
+      <AddPatientDialog
         open={isAddPatientOpen}
         onOpenChange={setIsAddPatientOpen}
         onPatientAdded={handlePatientAdded}
       />
+      <EditPatientDialog
+        patient={selectedPatientForEdit}
+        open={isEditPatientOpen}
+        onOpenChange={setIsEditPatientOpen}
+        onPatientUpdated={handlePatientUpdated}
+      />
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
-              <p className="text-muted-foreground">Gestiona la información de tus pacientes.</p>
+              <h1 className="text-2xl font-bold tracking-tight">Pacientes</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">Gestiona la información de tus pacientes.</p>
             </div>
-            <div className='flex gap-2'>
-              <Button variant="outline" onClick={() => setIsAddPatientOpen(true)}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Agregar Paciente
+            <div className="flex gap-2 shrink-0">
+              <Button variant="outline" onClick={() => setIsAddPatientOpen(true)} className="gap-2">
+                  <PlusCircle className="h-4 w-4" />
+                  <span className="hidden sm:inline">Agregar Paciente</span>
+                  <span className="sm:hidden">Agregar</span>
               </Button>
-               <Button onClick={() => openAppointmentDialog()}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Agendar Turno
+               <Button onClick={() => openAppointmentDialog()} className="gap-2">
+                  <PlusCircle className="h-4 w-4" />
+                  <span className="hidden sm:inline">Agendar Turno</span>
+                  <span className="sm:hidden">Turno</span>
               </Button>
             </div>
         </div>
@@ -215,7 +236,7 @@ export default function PatientsPage() {
                             <DropdownMenuTrigger asChild>
                               <Button aria-haspopup="true" size="icon" variant="ghost">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
+                                <span className="sr-only">Abrir menú</span>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -226,7 +247,9 @@ export default function PatientsPage() {
                               <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openAppointmentDialog(patient.id); }}>
                                 Agendar Turno
                               </DropdownMenuItem>
-                              <DropdownMenuItem>Editar Paciente</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openEditDialog(patient); }}>
+                                Editar Paciente
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

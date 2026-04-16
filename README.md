@@ -34,3 +34,13 @@ La migración a MongoDB está activa para:
 - Dashboard en lecturas/escrituras principales (`/dashboard`, `/dashboard/pacientes`, `/dashboard/calendario`, alta de paciente y alta de turno).
 
 La autenticación todavía usa Firebase Auth y puede migrarse en una siguiente etapa.
+
+## Seguridad de secretos
+
+- Nunca hardcodear claves en `src/` o `scripts/`.
+- Configurar siempre variables en `.env.local` usando `.env.example` como base.
+- No commitear archivos de credenciales (`*firebase-adminsdk*.json`, `*service-account*.json`).
+- Si hubo exposición de credenciales, rotar inmediatamente:
+	- MongoDB (`MONGODB_URI` usuario/clave)
+	- Google OAuth (`GOOGLE_CLIENT_SECRET`)
+	- Firebase Admin private key

@@ -8,8 +8,8 @@ export default function TermsPage() {
       <main className="flex-1 py-12 md:py-24">
         <div className="container mx-auto px-4 md:px-6 max-w-3xl space-y-8">
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tighter sm:text-5xl">Términos y Condiciones de Servicio</h1>
-            <p className="mt-2 text-muted-foreground">Última actualización: {new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <h1 className="text-4xl font-extrabold tracking-tighter sm:text-5xl">Términos y condiciones del servicio</h1>
+            <p className="mt-2 text-muted-foreground">Última actualización: {new Date().toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
           
           <div className="space-y-6 text-muted-foreground">

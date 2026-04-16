@@ -7,12 +7,6 @@ type SuperAdminAuthContext = {
   emailVerified: boolean;
 };
 
-function isSuperAdminEmail(email?: string | null) {
-  const normalized = (email || '').toLowerCase();
-  const configured = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@mediturnos.com').toLowerCase();
-  return normalized !== '' && normalized === configured;
-}
-
 function getBearerToken(request: Request): string | null {
   const authHeader = request.headers.get('authorization') || '';
   if (!authHeader.startsWith('Bearer ')) return null;
@@ -40,7 +34,7 @@ async function hasSuperAdminRoleDoc(request: Request, uid: string): Promise<bool
   return response.ok;
 }
 
-async function hasAdminUserDoc(request: Request, uid: string): Promise<boolean> {
+async function hasSuperAdminUserDoc(request: Request, uid: string): Promise<boolean> {
   const token = getBearerToken(request);
   if (!token) return false;
 
@@ -68,23 +62,21 @@ async function hasAdminUserDoc(request: Request, uid: string): Promise<boolean> 
   };
 
   const role = payload.fields?.role?.stringValue?.toLowerCase();
-  return role === 'admin';
+  return role === 'super_admin' || role === 'super-admin';
+}
+
+export async function isRequestSuperAdmin(request: Request, uid: string): Promise<boolean> {
+  const roleDocExists = await hasSuperAdminRoleDoc(request, uid);
+  if (roleDocExists) return true;
+
+  return hasSuperAdminUserDoc(request, uid);
 }
 
 export async function requireSuperAdminRequest(request: Request): Promise<SuperAdminAuthContext> {
   const authUser = await requireRequestAuth(request);
 
-  if (isSuperAdminEmail(authUser.email)) {
-    return authUser;
-  }
-
-  const roleExists = await hasSuperAdminRoleDoc(request, authUser.uid);
-  if (roleExists) {
-    return authUser;
-  }
-
-  const hasAdminRole = await hasAdminUserDoc(request, authUser.uid);
-  if (!hasAdminRole) {
+  const isSuperAdmin = await isRequestSuperAdmin(request, authUser.uid);
+  if (!isSuperAdmin) {
     throw new Error('FORBIDDEN_SUPERADMIN_ROLE');
   }
 

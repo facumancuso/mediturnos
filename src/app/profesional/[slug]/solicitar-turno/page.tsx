@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Appointment, Professional } from '@/types';
+import { getWorkingHoursForDate } from '@/lib/working-hours';
 
 // Form Schema
 const formSchema = z.object({
@@ -66,6 +67,7 @@ export default function BookAppointmentPage() {
   const [professional, setProfessional] = useState<Professional | null>(null);
   const [appointmentsOnDay, setAppointmentsOnDay] = useState<Appointment[]>([]);
   const [isLoadingProfessional, setIsLoadingProfessional] = useState(false);
+  const [hasAttemptedProfessionalLoad, setHasAttemptedProfessionalLoad] = useState(false);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
   const [step, setStep] = useState(1);
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -84,6 +86,9 @@ export default function BookAppointmentPage() {
 
     async function loadProfessional() {
       try {
+        if (!cancelled) {
+          setHasAttemptedProfessionalLoad(false);
+        }
         setIsLoadingProfessional(true);
         const response = await fetch(`/api/professionals/${slug}`, { cache: 'no-store' });
         if (!response.ok) {
@@ -102,6 +107,7 @@ export default function BookAppointmentPage() {
       } finally {
         if (!cancelled) {
           setIsLoadingProfessional(false);
+          setHasAttemptedProfessionalLoad(true);
         }
       }
     }
@@ -164,16 +170,32 @@ export default function BookAppointmentPage() {
     defaultValues: { name: '', dni: '', email: '', phone: '' },
   });
 
+  const blockedDateSet = useMemo(() => {
+    return new Set(Array.isArray(professional?.blockedDates) ? professional.blockedDates : []);
+  }, [professional?.blockedDates]);
+
+  const isSelectedDayBlocked = useMemo(() => {
+    if (!date) return false;
+    return blockedDateSet.has(format(date, 'yyyy-MM-dd'));
+  }, [date, blockedDateSet]);
+
   const availableSlots = useMemo(() => {
     if (!date || !professional) return [];
 
-    const workingHoursConfig = professional.workingHours ? JSON.parse(professional.workingHours) : {};
-    const workingHours = {
-      start: workingHoursConfig.start || '09:00',
-      end: workingHoursConfig.end || '18:00',
-      breaks: workingHoursConfig.breaks || [{ start: '13:00', end: '14:00' }],
-      appointmentDuration: professional.appointmentDuration || 30,
-    };
+    const dateKey = format(date, 'yyyy-MM-dd');
+    if (blockedDateSet.has(dateKey)) {
+      return [];
+    }
+
+    const workingHours = getWorkingHoursForDate(
+      professional.workingHours,
+      date,
+      professional.appointmentDuration || 30
+    );
+
+    if (!workingHours.enabled) {
+      return [];
+    }
 
     const allSlots = generateTimeSlots(
       workingHours.start,
@@ -187,13 +209,22 @@ export default function BookAppointmentPage() {
       .map((appointment) => appointment.time);
 
     return allSlots.filter(slot => !bookedSlots.includes(slot));
-  }, [date, professional, appointmentsOnDay]);
+  }, [date, professional, appointmentsOnDay, blockedDateSet]);
 
-  if (!isLoadingProfessional && !professional) {
+  if (slug && hasAttemptedProfessionalLoad && !isLoadingProfessional && !professional) {
     notFound();
   }
   
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (!professional) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo identificar al profesional.',
+      });
+      return;
+    }
+
     console.log("Appointment Data:", {
       professional: professional.name,
       date,
@@ -223,6 +254,9 @@ export default function BookAppointmentPage() {
           professionalId,
           patientId: `public-${form.getValues('dni')}`,
           patientName: form.getValues('name'),
+          patientDni: form.getValues('dni'),
+          patientEmail: form.getValues('email'),
+          patientPhone: form.getValues('phone'),
           patientAvatarUrl: '',
           date: appointmentDate.toISOString(),
           time: selectedTime,
@@ -264,32 +298,54 @@ export default function BookAppointmentPage() {
               <CardTitle>Selecciona Fecha y Hora</CardTitle>
               <CardDescription>Elige un horario disponible para tu turno.</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="flex justify-center">
+            <CardContent className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(280px,340px)_1fr]">
+              <div className="rounded-xl border bg-muted/20 p-3 md:p-4">
                 {isClient ? (
                   <Calendar
                     mode="single"
                     selected={date}
                     onSelect={setDate}
                     locale={es}
+                    navLayout="around"
                     weekStartsOn={1}
-                    disabled={(day) => day < startOfDay(new Date())}
+                    disabled={(day) => {
+                      if (day < startOfDay(new Date())) return true;
+                      if (!professional) return false;
+                      const dayKey = format(day, 'yyyy-MM-dd');
+                      if (blockedDateSet.has(dayKey)) return true;
+                      const config = getWorkingHoursForDate(
+                        professional.workingHours,
+                        day,
+                        professional.appointmentDuration || 30
+                      );
+                      return !config.enabled;
+                    }}
+                    className="mx-auto w-full max-w-[320px]"
+                    classNames={{
+                      caption_label: 'text-base font-semibold',
+                      month: 'grid grid-cols-[2.25rem_1fr_2.25rem] items-center gap-y-3',
+                      button_previous: 'col-start-1 row-start-1 justify-self-start',
+                      month_caption: 'col-start-2 row-start-1 justify-self-center',
+                      button_next: 'col-start-3 row-start-1 justify-self-end',
+                      month_grid: 'col-span-3',
+                    }}
                     initialFocus
                   />
                 ) : <Skeleton className="h-[298px] w-full max-w-[320px] rounded-md" />}
               </div>
-              <div className="flex flex-col">
-                <h3 className="font-semibold mb-4 text-center">
+              <div className="rounded-xl border bg-background p-4 md:p-5">
+                <h3 className="mb-4 text-center text-base font-semibold md:text-left">
                   Horarios para {date ? format(date, "PPP", { locale: es }) : '...'}
                 </h3>
-                <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-72 pr-2">
+                <div className="grid max-h-80 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
                   {isLoadingAppointments ? (
-                    [...Array(9)].map((_, index) => <Skeleton key={index} className="h-9 w-full" />)
+                    [...Array(9)].map((_, index) => <Skeleton key={index} className="h-11 w-full rounded-md" />)
                   ) : availableSlots.length > 0 ? (
                     availableSlots.map(time => (
                       <Button
                         key={time}
                         variant="outline"
+                        className="h-11 text-sm font-semibold"
                         onClick={() => {
                           setSelectedTime(time);
                           setStep(2);
@@ -299,7 +355,11 @@ export default function BookAppointmentPage() {
                       </Button>
                     ))
                   ) : (
-                    <p className="col-span-3 text-center text-muted-foreground mt-4">No hay turnos disponibles para este día.</p>
+                    <p className="col-span-full mt-4 rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                      {isSelectedDayBlocked
+                        ? 'Este día fue marcado como no laborable por el profesional.'
+                        : 'No hay turnos disponibles para este día.'}
+                    </p>
                   )}
                 </div>
               </div>
@@ -376,7 +436,7 @@ export default function BookAppointmentPage() {
                         <div className="flex items-center gap-3"><Smartphone className="h-5 w-5 text-primary" /> <div><p className="font-bold">{form.getValues('phone')}</p><p className="text-sm text-muted-foreground">Teléfono de contacto</p></div></div>
                     </div>
                     <Button onClick={handleFinalConfirmation} className="w-full" size="lg" disabled={isSubmitting}>
-                      {isSubmitting ? 'Agendando...' : 'Agendar Turno Definitivamente'}
+                      {isSubmitting ? 'Solicitando...' : 'Solicitar Turno'}
                     </Button>
                 </CardContent>
             </>
@@ -387,7 +447,7 @@ export default function BookAppointmentPage() {
                 <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2">¡Turno Agendado!</h2>
                 <p className="text-muted-foreground max-w-sm">
-                    Tu turno con {professional.name} para el {date ? format(date, "PPP", { locale: es }) : ''} a las {selectedTime} hs ha sido confirmado.
+                  Tu turno con {professional?.name ?? 'el profesional'} para el {date ? format(date, "PPP", { locale: es }) : ''} a las {selectedTime} hs ha sido confirmado.
                     Recibirás los detalles en tu correo.
                 </p>
                  <Button asChild className="mt-8">
@@ -402,7 +462,7 @@ export default function BookAppointmentPage() {
 
   return (
     <div className="container max-w-4xl mx-auto py-12">
-        {isLoadingProfessional ? (
+        {isLoadingProfessional || !professional ? (
           <div className="space-y-4">
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-[420px] w-full" />
@@ -411,7 +471,7 @@ export default function BookAppointmentPage() {
           <>
         <div className="flex flex-col md:flex-row items-center gap-6 mb-8">
             <Avatar className="h-20 w-20 border">
-              <AvatarImage src={professional?.photoURL || ''} alt={professional?.name || 'Profesional'} />
+              <AvatarImage src={professional.photoURL || ''} alt={professional.name || 'Profesional'} />
               <AvatarFallback>{professional.name.slice(0, 2)}</AvatarFallback>
             </Avatar>
             <div>

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Get-Service -Name ''MongoDB'' -ErrorAction SilentlyContinue | Select-Object Status,Name\")",
+      "Bash(powershell -Command \"mongosh --eval ''db.adminCommand\\({ping: 1}\\)'' --quiet 2>&1 | head -5\")",
+      "Bash(node -e \"const pkg = require\\(''./package.json''\\); console.log\\(pkg.dependencies[''firebase'']\\)\")",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

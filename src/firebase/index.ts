@@ -1,6 +1,6 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
+import { firebaseConfig, getMissingFirebaseWebConfig, hasFirebaseWebConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
@@ -22,6 +22,14 @@ export function initializeFirebase() {
       if (process.env.NODE_ENV === "production") {
         console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
       }
+
+      if (!hasFirebaseWebConfig()) {
+        const missing = getMissingFirebaseWebConfig();
+        throw new Error(
+          `Faltan variables públicas de Firebase en el cliente: ${missing.join(', ')}. Reinicia el servidor después de completar .env.local.`
+        );
+      }
+
       firebaseApp = initializeApp(firebaseConfig);
     }
 

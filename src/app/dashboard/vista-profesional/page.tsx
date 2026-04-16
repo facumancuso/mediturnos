@@ -16,7 +16,6 @@ import type { Appointment } from '@/types';
 import { isToday } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { AppointmentDetailsDialog } from '@/components/appointment-details-dialog';
-import { OnboardingChecklist } from '@/components/onboarding-checklist';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
@@ -104,9 +103,9 @@ export default function VistaProfesionalPage() {
         <Card className="xl:col-span-2">
           <CardHeader className="flex flex-row items-center">
             <div className="grid gap-2">
-              <CardTitle>Turnos del Día</CardTitle>
+              <CardTitle>Turnos del día</CardTitle>
               <CardDescription>
-                {isClient ? `Esta es la agenda para hoy, ${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.` : 'Cargando agenda...'}
+                {isClient ? `Esta es la agenda para hoy, ${new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.` : 'Cargando agenda...'}
               </CardDescription>
             </div>
             <div className="ml-auto flex items-center gap-2">

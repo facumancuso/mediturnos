@@ -3,8 +3,26 @@ import { getMongoDb } from '@/lib/mongodb';
 import { getOptionalRequestAuth } from '@/lib/request-auth';
 import { logSecurityAudit } from '@/lib/security-audit';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { syncAppointmentToGoogleCalendar } from '@/lib/google-calendar';
+import {
+  buildAppointmentsCacheKey,
+  getCachedAppointments,
+  invalidateAppointmentsReadCache,
+  setCachedAppointments,
+} from '@/lib/appointments-cache';
+import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
+
+let appointmentsIndexesReady = false;
+
+async function ensureAppointmentsIndexes(db: Awaited<ReturnType<typeof getMongoDb>>) {
+  if (appointmentsIndexesReady) return;
+  await db.collection('appointments').createIndex({ professionalId: 1, date: 1, time: 1 });
+  await db.collection('appointments').createIndex({ professionalId: 1, status: 1, date: 1 });
+  await db.collection('appointments').createIndex({ professionalId: 1, patientId: 1, date: 1 });
+  appointmentsIndexesReady = true;
+}
 
 function mapDocument(doc: Record<string, any>) {
   return {
@@ -53,6 +71,8 @@ export async function GET(request: Request) {
     const day = searchParams.get('day');
     const start = searchParams.get('start');
     const end = searchParams.get('end');
+    const statusFilter = searchParams.get('status');
+    const patientIdFilter = searchParams.get('patientId');
 
     if (!professionalId) {
       return NextResponse.json({ error: 'professionalId es obligatorio.' }, { status: 400 });
@@ -106,18 +126,64 @@ export async function GET(request: Request) {
       query.date = { $gte: parsedStart, $lte: parsedEnd };
     }
 
+    if (statusFilter) {
+      query.status = statusFilter;
+    }
+
+    if (patientIdFilter) {
+      query.patientId = { $in: [patientIdFilter, `public-${patientIdFilter}`] };
+    }
+
     const db = await getMongoDb();
+    await ensureAppointmentsIndexes(db);
+
+    const cacheKey = buildAppointmentsCacheKey({
+      professionalId,
+      day,
+      start,
+      end,
+      status: statusFilter,
+      patientId: patientIdFilter,
+      isPublic: !isAuthenticatedDashboardRequest,
+    });
+
+    const cachedPayload = getCachedAppointments<unknown[]>(cacheKey);
+    if (cachedPayload) {
+      return NextResponse.json(cachedPayload, {
+        headers: {
+          'Cache-Control': 'private, max-age=5, stale-while-revalidate=20',
+          'X-Data-Cache': 'hit',
+        },
+      });
+    }
+
     const appointments = await db
       .collection('appointments')
       .find(query)
       .sort({ date: 1, time: 1 })
       .toArray();
 
+    const payload = !isAuthenticatedDashboardRequest
+      ? appointments.map(mapPublicDocument)
+      : appointments.map(mapDocument);
+
+    setCachedAppointments(cacheKey, payload);
+
     if (!isAuthenticatedDashboardRequest) {
-      return NextResponse.json(appointments.map(mapPublicDocument));
+      return NextResponse.json(payload, {
+        headers: {
+          'Cache-Control': 'private, max-age=5, stale-while-revalidate=20',
+          'X-Data-Cache': 'miss',
+        },
+      });
     }
 
-    return NextResponse.json(appointments.map(mapDocument));
+    return NextResponse.json(payload, {
+      headers: {
+        'Cache-Control': 'private, max-age=5, stale-while-revalidate=20',
+        'X-Data-Cache': 'miss',
+      },
+    });
   } catch (error) {
     console.error('Error obteniendo turnos desde MongoDB:', error);
     return NextResponse.json({ error: 'No se pudieron obtener los turnos.' }, { status: 500 });
@@ -145,6 +211,9 @@ export async function POST(request: Request) {
       professionalId,
       patientId,
       patientName,
+      patientDni,
+      patientEmail,
+      patientPhone,
       patientAvatarUrl,
       date,
       time,
@@ -206,9 +275,34 @@ export async function POST(request: Request) {
     const db = await getMongoDb();
     const now = new Date();
 
+    const professional = await db.collection('professionals').findOne(
+      { $or: [{ id: professionalId }, { userId: professionalId }] },
+      { projection: { blockedDates: 1 } }
+    );
+
+    const appointmentDayKey = `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, '0')}-${String(parsedDate.getDate()).padStart(2, '0')}`;
+    const blockedDates = Array.isArray(professional?.blockedDates) ? professional.blockedDates : [];
+
+    if (blockedDates.includes(appointmentDayKey)) {
+      return NextResponse.json(
+        { error: 'El profesional no atiende en la fecha seleccionada.' },
+        { status: 409 }
+      );
+    }
+
+    let resolvedPatientId = patientId;
+
+    if (isPublicBooking && patientDni) {
+      const dni = String(patientDni).replace(/\./g, '');
+      const existing = await db.collection('patients').findOne({ professionalId, id: dni });
+      if (existing) {
+        resolvedPatientId = existing.id;
+      }
+    }
+
     const appointment = {
       professionalId,
-      patientId,
+      patientId: resolvedPatientId,
       patientName,
       patientAvatarUrl: patientAvatarUrl || '',
       date: parsedDate,
@@ -221,9 +315,61 @@ export async function POST(request: Request) {
     };
 
     const result = await db.collection('appointments').insertOne(appointment);
+
+    let googleCalendarSync: { synced: boolean; reason?: string; eventId?: string } | null = null;
+
+    if (!isPublicBooking && appointment.status === 'confirmed') {
+      const professional = await db.collection('professionals').findOne(
+        { $or: [{ id: professionalId }, { userId: professionalId }] },
+        { projection: { name: 1, address: 1 } }
+      );
+
+      googleCalendarSync = await syncAppointmentToGoogleCalendar({
+        db,
+        professionalId,
+        appointmentObjectId: result.insertedId,
+        appointment,
+        professionalName: String(professional?.name || 'Profesional'),
+        professionalAddress: String(professional?.address || ''),
+      });
+    }
+
+    if (isPublicBooking && patientDni && patientEmail && patientPhone) {
+      const dni = String(patientDni).replace(/\./g, '');
+      await db.collection('patients').updateOne(
+        { professionalId, id: dni },
+        {
+          $setOnInsert: {
+            professionalId,
+            id: dni,
+            dni,
+            name: patientName,
+            email: patientEmail,
+            phone: patientPhone,
+            insurance: 'Particular',
+            lastVisit: now.toISOString(),
+            totalVisits: 0,
+            missedAppointments: 0,
+            avatarUrl: `https://picsum.photos/seed/${dni}/100/100`,
+            createdAt: now,
+            updatedAt: now,
+          },
+        },
+        { upsert: true }
+      );
+    }
+
+    invalidateAppointmentsReadCache(professionalId);
+
     const saved = await db.collection('appointments').findOne({ _id: result.insertedId });
 
-    return NextResponse.json(mapDocument(saved || appointment), { status: 201 });
+    return NextResponse.json(
+      {
+        ...mapDocument(saved || appointment),
+        googleCalendarSync,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     if (
       error instanceof Error &&

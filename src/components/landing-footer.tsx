@@ -15,10 +15,10 @@ export function LandingFooter() {
         </div>
         <div className="grid gap-4">
           <h4 className="font-semibold">Producto</h4>
-          <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/#features" className="text-sm text-muted-foreground hover:text-foreground">
             Beneficios
           </Link>
-          <Link href="#pricing" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/#pricing" className="text-sm text-muted-foreground hover:text-foreground">
             Precios
           </Link>
           <Link href="/directorio" className="text-sm text-muted-foreground hover:text-foreground">

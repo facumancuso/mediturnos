@@ -72,6 +72,59 @@ export async function GET(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const authUser = await requireRequestAuth(request);
+    const rateLimit = await enforceRateLimit({
+      request,
+      keyPrefix: 'dashboard:patients:patch',
+      identifier: authUser.uid,
+      limit: 60,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Demasiadas solicitudes.' },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } }
+      );
+    }
+
+    const body = await request.json();
+    const { professionalId, id, name, email, phone, insurance, notes } = body || {};
+
+    if (!professionalId || !id) {
+      return NextResponse.json({ error: 'professionalId e id son obligatorios.' }, { status: 400 });
+    }
+    if (professionalId !== authUser.uid) {
+      return NextResponse.json({ error: 'No autorizado.' }, { status: 403 });
+    }
+
+    const db = await getMongoDb();
+    const existing = await db.collection('patients').findOne({ professionalId, id });
+    if (!existing) {
+      return NextResponse.json({ error: 'Paciente no encontrado.' }, { status: 404 });
+    }
+
+    const fields: Record<string, any> = { updatedAt: new Date() };
+    if (name !== undefined) fields.name = name;
+    if (email !== undefined) fields.email = email;
+    if (phone !== undefined) fields.phone = phone;
+    if (insurance !== undefined) fields.insurance = insurance;
+    if (notes !== undefined) fields.notes = notes;
+
+    await db.collection('patients').updateOne({ professionalId, id }, { $set: fields });
+
+    const updated = await db.collection('patients').findOne({ professionalId, id });
+    return NextResponse.json(mapDocument(updated!));
+  } catch (error) {
+    if (error instanceof Error && (error.message.includes('UNAUTHORIZED') || error.message.includes('Token'))) {
+      return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
+    }
+    console.error('Error actualizando paciente:', error);
+    return NextResponse.json({ error: 'No se pudo actualizar el paciente.' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const authUser = await requireRequestAuth(request);
@@ -136,7 +189,6 @@ export async function POST(request: Request) {
       totalVisits: Number.isFinite(totalVisits) ? totalVisits : 0,
       missedAppointments: Number.isFinite(missedAppointments) ? missedAppointments : 0,
       avatarUrl: avatarUrl || `https://picsum.photos/seed/${id}/100/100`,
-      createdAt: now,
       updatedAt: now,
     };
 

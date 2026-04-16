@@ -76,7 +76,8 @@ export function AddPatientDialog({ open, onOpenChange, onPatientAdded }: AddPati
       });
 
       if (!response.ok) {
-        throw new Error('No se pudo crear el paciente.');
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || `Error ${response.status}`);
       }
 
       const savedPatient = (await response.json()) as Patient;
@@ -92,7 +93,7 @@ export function AddPatientDialog({ open, onOpenChange, onPatientAdded }: AddPati
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'No se pudo crear el paciente en MongoDB local.',
+        description: error instanceof Error ? error.message : 'No se pudo crear el paciente.',
       });
     } finally {
       setIsSubmitting(false);

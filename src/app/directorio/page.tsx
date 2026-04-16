@@ -13,12 +13,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Professional } from '@/types';
+import { PROFESSIONAL_BRAND_COVER_URL } from '@/lib/branding';
+
+const DIRECTORY_CACHE_KEY = 'directory:professionals';
+const DIRECTORY_CACHE_TTL_MS = 2 * 60_000;
 
 function ProfessionalCard({ professional }: { professional: Professional }) {
   const publicProfile = professional.publicProfile || {};
   const coverImage =
     professional.coverImageUrl ||
-    `https://picsum.photos/seed/${professional.id}-cover/600/200`;
+    PROFESSIONAL_BRAND_COVER_URL;
 
   return (
     <Card className="overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-border/60">
@@ -130,15 +134,46 @@ export default function DirectoryPage() {
   useEffect(() => {
     let cancelled = false;
 
+    try {
+      const rawCached = sessionStorage.getItem(DIRECTORY_CACHE_KEY);
+      if (rawCached) {
+        const cached = JSON.parse(rawCached) as { savedAt?: number; data?: Professional[] };
+        if (Array.isArray(cached.data) && Date.now() - Number(cached.savedAt || 0) < DIRECTORY_CACHE_TTL_MS) {
+          setProfessionals(cached.data);
+          setIsLoading(false);
+        }
+      }
+    } catch {
+      // Ignorar cache inválida y continuar.
+    }
+
     async function loadProfessionals() {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/professionals', { cache: 'no-store' });
-        if (!response.ok) throw new Error('No se pudieron cargar los profesionales.');
+        const response = await fetch('/api/professionals');
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          console.warn('No se pudieron cargar los profesionales.', {
+            status: response.status,
+            error: payload?.error,
+          });
+          if (!cancelled) setProfessionals([]);
+          return;
+        }
         const data = (await response.json()) as Professional[];
-        if (!cancelled) setProfessionals(data);
+        if (!cancelled) {
+          setProfessionals(data);
+          try {
+            sessionStorage.setItem(
+              DIRECTORY_CACHE_KEY,
+              JSON.stringify({ savedAt: Date.now(), data })
+            );
+          } catch {
+            // Storage lleno o no disponible.
+          }
+        }
       } catch (error) {
-        console.error(error);
+        console.error('Error inesperado cargando profesionales:', error);
         if (!cancelled) setProfessionals([]);
       } finally {
         if (!cancelled) setIsLoading(false);

@@ -31,24 +31,28 @@ function mapDocument(doc: Record<string, any>) {
   };
 }
 
-async function findPatientByIdentity(db: Awaited<ReturnType<typeof getMongoDb>>, lookup: PatientLookup) {
-  const fullName = normalizeText(lookup.fullName || '');
-  const dni = normalizeDni(lookup.dni || '');
-  const phone = normalizePhone(lookup.phone || '');
+function mapAppointmentWithProfessional(
+  doc: Record<string, any>,
+  professional?: Record<string, any> | null
+) {
+  return {
+    ...mapDocument(doc),
+    professionalName: professional?.name ?? null,
+    professionalAddress: professional?.address ?? null,
+    professionalWhatsappNumber: professional?.whatsappNumber ?? null,
+    professionalSlug: professional?.publicProfile?.slug ?? null,
+    professionalMapUrl: professional?.publicProfile?.mapUrl ?? null,
+  };
+}
 
-  if (!fullName || !dni || !phone) {
+async function findPatientByIdentity(db: Awaited<ReturnType<typeof getMongoDb>>, lookup: PatientLookup) {
+  const dni = normalizeDni(lookup.dni || '');
+
+  if (!dni) {
     return null;
   }
 
-  const candidates = await db.collection('patients').find({ dni }).toArray();
-
-  return (
-    candidates.find((patient) => {
-      const patientName = normalizeText(patient.name || '');
-      const patientPhone = normalizePhone(patient.phone || '');
-      return patientName === fullName && patientPhone === phone;
-    }) || null
-  );
+  return db.collection('patients').findOne({ id: dni }) || null;
 }
 
 export async function GET(request: Request) {
@@ -67,33 +71,46 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const fullName = searchParams.get('fullName') || '';
     const dni = searchParams.get('dni') || '';
-    const phone = searchParams.get('phone') || '';
+  const activeOnly = ['1', 'true', 'yes'].includes((searchParams.get('activeOnly') || '').toLowerCase());
 
-    if (!fullName || !dni || !phone) {
+    if (!dni) {
       return NextResponse.json(
-        { error: 'fullName, dni y phone son obligatorios.' },
+        { error: 'El DNI es obligatorio.' },
         { status: 400 }
       );
     }
 
     const db = await getMongoDb();
-    const patient = await findPatientByIdentity(db, { fullName, dni, phone });
+    const patient = await findPatientByIdentity(db, { dni });
 
     if (!patient) {
       return NextResponse.json({ error: 'Paciente no encontrado.' }, { status: 404 });
     }
 
+    const appointmentQuery: Record<string, any> = {
+      professionalId: patient.professionalId,
+      patientId: { $in: [patient.id, `public-${patient.id}`] },
+    };
+
+    if (activeOnly) {
+      appointmentQuery.status = { $in: ['pending', 'confirmed'] };
+    }
+
     const appointments = await db
       .collection('appointments')
-      .find({ professionalId: patient.professionalId, patientId: patient.id })
+      .find(appointmentQuery)
       .sort({ date: 1, time: 1 })
       .toArray();
 
+    const professional = await db.collection('professionals').findOne(
+      { $or: [{ id: patient.professionalId }, { userId: patient.professionalId }] },
+      { projection: { name: 1, address: 1, whatsappNumber: 1, 'publicProfile.slug': 1, 'publicProfile.mapUrl': 1 } }
+    );
+
     return NextResponse.json({
       patient: mapDocument(patient),
-      appointments: appointments.map(mapDocument),
+      appointments: appointments.map((appointment) => mapAppointmentWithProfessional(appointment, professional)),
     });
   } catch (error) {
     console.error('Error obteniendo estado de turnos del paciente:', error);
@@ -120,11 +137,11 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { appointmentId, action, fullName, dni, phone } = body || {};
+    const { appointmentId, action, dni } = body || {};
 
-    if (!appointmentId || !action || !fullName || !dni || !phone) {
+    if (!appointmentId || !action || !dni) {
       return NextResponse.json(
-        { error: 'appointmentId, action, fullName, dni y phone son obligatorios.' },
+        { error: 'appointmentId, action y dni son obligatorios.' },
         { status: 400 }
       );
     }
@@ -137,7 +154,7 @@ export async function PATCH(request: Request) {
     }
 
     const db = await getMongoDb();
-    const patient = await findPatientByIdentity(db, { fullName, dni, phone });
+    const patient = await findPatientByIdentity(db, { dni });
 
     if (!patient) {
       return NextResponse.json({ error: 'Paciente no encontrado.' }, { status: 404 });
@@ -148,7 +165,7 @@ export async function PATCH(request: Request) {
     const appointment = await db.collection('appointments').findOne({
       ...(objectId ? { _id: objectId } : { id: appointmentId }),
       professionalId: patient.professionalId,
-      patientId: patient.id,
+      patientId: { $in: [patient.id, `public-${patient.id}`] },
     });
 
     if (!appointment) {
@@ -162,13 +179,32 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const newStatus = action === 'confirm' ? 'confirmed' : 'cancelled';
+    if (appointment.status !== 'confirmed') {
+      return NextResponse.json(
+        { error: 'Solo podés responder un turno cuando esté confirmado por el profesional.' },
+        { status: 400 }
+      );
+    }
+
+    if (appointment.patientResponse) {
+      return NextResponse.json(
+        { error: 'Este turno ya fue respondido anteriormente.' },
+        { status: 400 }
+      );
+    }
+
+    const respondedAt = new Date().toISOString();
+    const statusUpdate = action === 'cancel' ? 'cancelled' : appointment.status;
 
     await db.collection('appointments').updateOne(
       { _id: appointment._id },
       {
         $set: {
-          status: newStatus,
+          status: statusUpdate,
+          patientResponse: action === 'confirm' ? 'confirmed' : 'declined',
+          patientRespondedAt: respondedAt,
+          patientResponsePendingNotification: true,
+          ...(action === 'cancel' ? { cancelledAt: respondedAt } : {}),
           updatedAt: new Date(),
         },
       }
@@ -176,7 +212,12 @@ export async function PATCH(request: Request) {
 
     const updated = await db.collection('appointments').findOne({ _id: appointment._id });
 
-    return NextResponse.json(mapDocument(updated || appointment));
+    const professional = await db.collection('professionals').findOne(
+      { $or: [{ id: patient.professionalId }, { userId: patient.professionalId }] },
+      { projection: { name: 1, address: 1, whatsappNumber: 1, 'publicProfile.slug': 1, 'publicProfile.mapUrl': 1 } }
+    );
+
+    return NextResponse.json(mapAppointmentWithProfessional(updated || appointment, professional));
   } catch (error) {
     console.error('Error actualizando turno desde portal paciente:', error);
     return NextResponse.json({ error: 'No se pudo actualizar el turno.' }, { status: 500 });

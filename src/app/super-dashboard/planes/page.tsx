@@ -88,7 +88,7 @@ export default function PlansPage() {
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox id="feat-basico-4" disabled />
-                                <Label htmlFor="feat-basico-4" className="text-muted-foreground">Integración con Google Calendar</Label>
+                                <Label htmlFor="feat-basico-4" className="text-muted-foreground">Integración con Calendario de Google</Label>
                             </div>
                         </div>
                     </CardContent>
@@ -124,7 +124,7 @@ export default function PlansPage() {
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox id="feat-profesional-3" defaultChecked />
-                                <Label htmlFor="feat-profesional-3">Integración con Google Calendar</Label>
+                                <Label htmlFor="feat-profesional-3">Integración con Calendario de Google</Label>
                             </div>
                         </div>
                     </CardContent>

@@ -216,7 +216,7 @@ export default function Home() {
     },
     {
       icon: CheckCircle,
-      title: 'Integración Google Calendar',
+      title: 'Integración con Calendario de Google',
       desc: 'Sincronizá tus turnos automáticamente con tu calendario personal de Google.',
       colorClass: 'bg-emerald-50 text-emerald-600',
     },
@@ -314,7 +314,7 @@ export default function Home() {
               </div>
 
               {/* Dashboard mockup */}
-              <div className="relative hidden md:block pt-6 pb-8">
+              <div className="relative block pt-6 pb-8">
                 <DashboardMockup />
               </div>
             </div>
@@ -600,7 +600,7 @@ export default function Home() {
                       'Turnos ilimitados',
                       'Todo lo del plan Básico',
                       'Perfil público en directorio',
-                      'Integración con Google Calendar',
+                      'Integración con Calendario de Google',
                       'Recordatorios automáticos',
                     ].map((f, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-primary-foreground">
@@ -699,14 +699,15 @@ export default function Home() {
         </section>
 
         {/* ── FINAL CTA ─────────────────────────────────────────── */}
-        <section className="relative overflow-hidden py-24 md:py-32">
+        <section 
+          className="relative overflow-hidden py-24 md:py-32 bg-gradient-to-br from-red-950 via-red-900 to-red-900"
+          style={{
+            backgroundImage: `linear-gradient(to bottom right, rgb(127, 29, 29), rgb(157, 23, 23), rgb(120, 53, 15))`,
+          }}
+        >
           <div
             aria-hidden
-            className="absolute inset-0 -z-10 bg-gradient-to-br from-primary via-sky-500 to-primary/80"
-          />
-          <div
-            aria-hidden
-            className="absolute inset-0 -z-10 opacity-10 bg-[radial-gradient(circle_at_30%_20%,white,transparent_60%)]"
+            className="absolute inset-0 -z-10 opacity-40 bg-[radial-gradient(circle_at_30%_20%,rgba(239,68,68,0.6),transparent_60%)]"
           />
 
           <div className="container px-4 md:px-6">
@@ -731,7 +732,7 @@ export default function Home() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white/40 text-white hover:bg-white/10 gap-2"
+                  className="border-amber-300 text-amber-300 hover:bg-amber-300/10 font-semibold gap-2"
                   asChild
                 >
                   <Link href="/directorio">

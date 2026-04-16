@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
+  SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { UserNav } from '@/components/user-nav';
@@ -36,12 +37,6 @@ export default function SuperDashboardLayout({
   const router = useRouter();
   const [isRoleChecked, setIsRoleChecked] = useState(false);
 
-  function isSuperAdminEmail(email?: string | null) {
-    const normalized = (email || '').toLowerCase();
-    const configured = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@mediturnos.com').toLowerCase();
-    return normalized !== '' && normalized === configured;
-  }
-
   useEffect(() => {
     if (isUserLoading) return;
 
@@ -56,19 +51,13 @@ export default function SuperDashboardLayout({
 
     async function validateSuperAdminRole() {
       try {
-        if (isSuperAdminEmail(currentUser.email)) {
-          if (!cancelled) {
-            setIsRoleChecked(true);
-          }
-          return;
-        }
-
         const roleDoc = await getDoc(doc(firestore, 'roles_super_admin', currentUser.uid));
         const userDoc = await getDoc(doc(firestore, 'users', currentUser.uid));
         const userRole = String(userDoc.data()?.role || '').toLowerCase();
-        const isAdminUserDoc = userDoc.exists() && userRole === 'admin';
+        const isSuperAdminUserDoc =
+          userDoc.exists() && (userRole === 'super_admin' || userRole === 'super-admin');
 
-        if (!roleDoc.exists() && !isAdminUserDoc) {
+        if (!roleDoc.exists() && !isSuperAdminUserDoc) {
           router.replace('/dashboard');
           return;
         }
@@ -154,10 +143,11 @@ export default function SuperDashboardLayout({
                 className="shrink-0 md:hidden"
               >
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle navigation menu</span>
+                <span className="sr-only">Abrir menú de navegación</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col">
+              <SheetTitle className="sr-only">Menú de administración</SheetTitle>
               <nav className="grid gap-2 text-lg font-medium">
                 <Link
                   href="/super-dashboard"
