@@ -73,6 +73,7 @@ export async function GET(request: Request) {
     const end = searchParams.get('end');
     const statusFilter = searchParams.get('status');
     const patientIdFilter = searchParams.get('patientId');
+    const onlyDates = searchParams.get('onlyDates') === 'true';
 
     if (!professionalId) {
       return NextResponse.json({ error: 'professionalId es obligatorio.' }, { status: 400 });
@@ -145,13 +146,18 @@ export async function GET(request: Request) {
       status: statusFilter,
       patientId: patientIdFilter,
       isPublic: !isAuthenticatedDashboardRequest,
+      onlyDates,
     });
+
+    const cacheControlHeader = onlyDates
+      ? 'private, max-age=60, stale-while-revalidate=300'
+      : 'private, max-age=5, stale-while-revalidate=20';
 
     const cachedPayload = getCachedAppointments<unknown[]>(cacheKey);
     if (cachedPayload) {
       return NextResponse.json(cachedPayload, {
         headers: {
-          'Cache-Control': 'private, max-age=5, stale-while-revalidate=20',
+          'Cache-Control': cacheControlHeader,
           'X-Data-Cache': 'hit',
         },
       });
@@ -160,27 +166,21 @@ export async function GET(request: Request) {
     const appointments = await db
       .collection('appointments')
       .find(query)
+      .project(onlyDates ? { date: 1, status: 1, _id: 0 } : {})
       .sort({ date: 1, time: 1 })
       .toArray();
 
-    const payload = !isAuthenticatedDashboardRequest
-      ? appointments.map(mapPublicDocument)
-      : appointments.map(mapDocument);
+    const payload = onlyDates
+      ? appointments.map((doc) => ({ date: doc.date, status: doc.status }))
+      : !isAuthenticatedDashboardRequest
+        ? appointments.map(mapPublicDocument)
+        : appointments.map(mapDocument);
 
     setCachedAppointments(cacheKey, payload);
 
-    if (!isAuthenticatedDashboardRequest) {
-      return NextResponse.json(payload, {
-        headers: {
-          'Cache-Control': 'private, max-age=5, stale-while-revalidate=20',
-          'X-Data-Cache': 'miss',
-        },
-      });
-    }
-
     return NextResponse.json(payload, {
       headers: {
-        'Cache-Control': 'private, max-age=5, stale-while-revalidate=20',
+        'Cache-Control': cacheControlHeader,
         'X-Data-Cache': 'miss',
       },
     });

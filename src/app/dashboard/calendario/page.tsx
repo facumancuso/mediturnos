@@ -311,7 +311,7 @@ export default function CalendarPage() {
 
     useEffect(() => {
         const professionalId = user?.uid;
-        if (!professionalId || !professional) {
+        if (!professionalId) {
             setAppointmentDayKeys(new Set());
             return;
         }
@@ -323,16 +323,15 @@ export default function CalendarPage() {
         async function loadMonthAppointments() {
             try {
                 const response = await fetchWithAuth(
-                    `/api/dashboard/appointments?professionalId=${professionalId}&start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}`,
+                    `/api/dashboard/appointments?professionalId=${professionalId}&start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&onlyDates=true`,
                 );
                 if (!response.ok) throw new Error('No se pudieron cargar los turnos del mes.');
-                const data = (await response.json()) as Appointment[];
+                const data = (await response.json()) as { date: string | Date; status: string }[];
                 if (cancelled) return;
                 const keys = new Set<string>();
                 for (const appt of data) {
                     if (appt.status === 'cancelled') continue;
-                    const raw = appt.date as unknown;
-                    const d = raw instanceof Date ? raw : new Date(String(raw));
+                    const d = appt.date instanceof Date ? appt.date : new Date(String(appt.date));
                     if (!Number.isNaN(d.getTime())) {
                         keys.add(localDayKey(d));
                     }
@@ -349,7 +348,7 @@ export default function CalendarPage() {
         return () => {
             cancelled = true;
         };
-    }, [user?.uid, professional, visibleMonth, appointmentsReloadKey]);
+    }, [user?.uid, visibleMonth, appointmentsReloadKey]);
 
     async function handleAppointmentAction(appointmentId: string, action: 'confirm' | 'send_reminder') {
         setUpdatingId(appointmentId);
