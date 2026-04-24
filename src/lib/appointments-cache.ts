@@ -1,4 +1,4 @@
-const APPOINTMENTS_CACHE_TTL_MS = 60_000;
+const APPOINTMENTS_CACHE_TTL_MS = 20_000;
 
 type CachedValue = {
   expiresAt: number;
@@ -15,7 +15,6 @@ export function buildAppointmentsCacheKey(params: {
   status?: string | null;
   patientId?: string | null;
   isPublic: boolean;
-  onlyDates?: boolean;
 }) {
   return [
     params.professionalId,
@@ -25,7 +24,6 @@ export function buildAppointmentsCacheKey(params: {
     params.status || '',
     params.patientId || '',
     params.isPublic ? 'public' : 'auth',
-    params.onlyDates ? 'dates-only' : '',
   ].join('|');
 }
 
